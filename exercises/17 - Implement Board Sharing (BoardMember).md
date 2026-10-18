@@ -6,7 +6,7 @@ description: Graded capstone — add a BoardMember model so a board can be share
 # Implement Board Sharing (BoardMember)
 
 **Estimated time:** 3–4 hours
-**Work mode:** Solo — this is a graded assessment, not a paired exercise
+**Work mode:** Pairs
 
 ## Context
 
@@ -15,7 +15,7 @@ the JWT at creation and enforced by `BoardAccess`. That is deliberately the
 whole model through day 3 — there is no `BoardMember` table, and
 `requireBoardAccess` only ever asks "is this the owner, or an admin?"
 
-This assessment asks you to finish what day 3 left open: let an owner share a
+This assessment asks you to finish what the project left open: let an owner share a
 board with other users, who get real but limited access to it. You are
 building on top of the existing ownership check, not replacing it — the
 owner keeps every right they already have.
@@ -82,9 +82,17 @@ failures, signals + an `error` signal on the frontend).
 
 Use `alice`, `bob` and `carol` (admin) from the `kanban` realm — see
 `keycloak/README.md`. A natural manual test: as `alice`, create a board and
-add `bob` as a member; confirm `bob` can open it and move a card but cannot
-rename it or add `carol` as a member; confirm `carol` (admin) can do
-everything regardless.
+add `bob` as a member; confirm `bob` can open it and move a card, but a
+`PUT /api/boards/{id}` rename attempt (there's no rename button in the UI)
+and adding `carol` as a member both come back `403`; confirm `carol` (admin)
+can do everything regardless.
+
+## Submitting
+
+Work in your own fork of this repository, not a branch on the shared repo —
+a PR against the shared repo would be visible to every other pair. Submit by
+opening a PR within your own fork (branch into your fork's default branch)
+and sharing that PR's link. Don't merge it before it's been reviewed.
 
 ## Completion Check
 
