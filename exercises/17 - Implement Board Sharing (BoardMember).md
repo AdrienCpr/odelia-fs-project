@@ -96,14 +96,15 @@ and sharing that PR's link. Don't merge it before it's been reviewed.
 
 ## Completion Check
 
-Submit a branch or PR that includes:
+Submit the PR described in "Submitting" above. It should include:
 
 - The `BoardMember` entity, repository, and the three new endpoints (R2–R4).
 - The updated `BoardAccess` (and `BoardResource`/`CardResource`/
   `BoardListResource` as needed) enforcing R7–R10.
 - The updated `GET /api/boards` behavior (R6).
 - The frontend changes for F1–F5.
-- A short write-up (half a page is enough) of:
+- A short write-up (half a page is enough), posted as a comment on the PR,
+  of:
   - how you distinguished "owner-only" actions from "any collaborator"
     actions in `BoardAccess`;
   - one authorization edge case you considered and how you handled it
