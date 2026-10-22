@@ -9,6 +9,41 @@
     <p class="error">{{ error() }}</p>
   }
 
+  <section class="members" aria-label="Members">
+    <h3>Members</h3>
+    @if (board(); as b) {
+      <p class="muted owner">Owner: {{ b.owner }}</p>
+    }
+    <ul class="member-list">
+      @for (member of members(); track member.username) {
+        <li class="member">
+          <span class="member-name">{{ member.username }}</span>
+          @if (canManageMembers()) {
+            <button
+              type="button"
+              class="remove"
+              [attr.aria-label]="'Remove ' + member.username"
+              (click)="removeMember(member)">×</button>
+          }
+        </li>
+      } @empty {
+        <li class="muted">Not shared with anyone yet.</li>
+      }
+    </ul>
+    @if (canManageMembers()) {
+      <form class="add-member" (ngSubmit)="addMember()">
+        <input
+          name="newMemberName"
+          [(ngModel)]="newMemberName"
+          placeholder="Username to add"
+          autocomplete="off"
+          maxlength="120"
+          aria-label="Username to add" />
+        <button type="submit" [disabled]="!newMemberName.trim()">Add member</button>
+      </form>
+    }
+  </section>
+
   @if (loading()) {
     <p class="muted">Loading…</p>
   } @else {

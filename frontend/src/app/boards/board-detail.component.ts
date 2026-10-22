@@ -1,4 +1,5 @@
-import { Component, ElementRef, OnInit, inject, signal, viewChildren } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, inject, signal, viewChildren } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
@@ -11,7 +12,8 @@ import {
 } from '@angular/cdk/drag-drop';
 import { forkJoin } from 'rxjs';
 
-import { Board, BoardList, Card } from '../models/board';
+import { AuthService } from '../auth/auth.service';
+import { Board, BoardList, BoardMember, Card } from '../models/board';
 import { BoardService } from '../services/board.service';
 
 /**
@@ -28,7 +30,10 @@ import { BoardService } from '../services/board.service';
  *
  * New cards are added from a collapsed "+ Add a card" button at the foot of each
  * column: clicking it opens a one-field composer (title only) that stays open so
- * several cards can be typed in a row. The description is filled in afterwards
+ * several cards can be typed in a row.
+ *
+ * A members panel lists who the board is shared with. The owner (or an admin)
+ * can add a member by username and remove one; a plain member only sees the list. The description is filled in afterwards
  * through the inline card editor.
  */
 @Component({
@@ -40,11 +45,18 @@ import { BoardService } from '../services/board.service';
 export class BoardDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly boardService = inject(BoardService);
+  private readonly auth = inject(AuthService);
 
   readonly board = signal<Board | null>(null);
   readonly columns = signal<BoardList[]>([]);
   /** Cards keyed by column id. The arrays are mutated in place by the CDK helpers. */
   readonly cardsByList = signal<Record<number, Card[]>>({});
+  readonly members = signal<BoardMember[]>([]);
+  /** Only the owner (or an admin) manages membership; the API enforces it with a 403 anyway. */
+  readonly canManageMembers = computed(
+    () => this.auth.isAdmin() || (!!this.board()?.owner && this.board()?.owner === this.auth.username())
+  );
+  newMemberName = '';
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
@@ -80,12 +92,41 @@ export class BoardDetailComponent implements OnInit {
       next: board => this.board.set(board),
       error: err => this.fail('Could not load the board', err)
     });
+    this.boardService.getMembers(this.boardId).subscribe({
+      next: members => this.members.set(members),
+      error: err => this.fail('Could not load the members', err)
+    });
     this.boardService.getLists(this.boardId).subscribe({
       next: columns => {
         this.columns.set(columns);
         this.loadCards(columns);
       },
       error: err => this.fail('Could not load the columns', err)
+    });
+  }
+
+  addMember(): void {
+    const username = this.newMemberName.trim();
+    if (!username) {
+      return;
+    }
+    this.error.set(null);
+    this.boardService.addMember(this.boardId, username).subscribe({
+      next: member => {
+        this.members.update(members =>
+          [...members, member].sort((a, b) => a.username.localeCompare(b.username))
+        );
+        this.newMemberName = '';
+      },
+      error: err => this.fail(`Could not add "${username}"`, err, true)
+    });
+  }
+
+  removeMember(member: BoardMember): void {
+    this.error.set(null);
+    this.boardService.removeMember(this.boardId, member.username).subscribe({
+      next: () => this.members.update(members => members.filter(m => m.username !== member.username)),
+      error: err => this.fail(`Could not remove "${member.username}"`, err, true)
     });
   }
 
@@ -260,9 +301,23 @@ export class BoardDetailComponent implements OnInit {
     this.cardsByList.set({ ...this.cardsByList() });
   }
 
-  private fail(message: string, err: unknown): void {
+  private fail(message: string, err: unknown, explain = false): void {
     console.error(message, err);
-    this.error.set(message);
+    this.error.set(explain ? `${message}: ${this.reason(err)}` : message);
     this.loading.set(false);
+  }
+
+  /** A human-readable cause for a failed membership call. */
+  private reason(err: unknown): string {
+    switch ((err as HttpErrorResponse)?.status) {
+      case 400:
+        return 'this user is already a member, or is the owner of the board.';
+      case 403:
+        return 'only the owner of the board can manage its members.';
+      case 404:
+        return 'the board or the member no longer exists.';
+      default:
+        return 'please try again.';
+    }
   }
 }
